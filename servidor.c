@@ -1,19 +1,5 @@
-#include <stdio.h>
-#include <string.h>
-#include <fcntl.h>
-#include <arpa/inet.h>
-#include <sys/socket.h>
-#include <unistd.h>
-#include <stdio.h>
-#include <limits.h>
-#define MAXLINE 1024
-  
-/*Protocolo:
-    - 00: Final
-    - 01: Listado
-    - 10: Solicitar fichero
-    - 11: Subir fichero
-*/
+#include "servidor.h"
+
 
 char *END_FLAG = "================END";
 
@@ -77,8 +63,10 @@ int main(int argc, char **argv)
     char action[MAXLINE];
     n = recvfrom(sockfd, action, MAXLINE, 0, &cliaddr, sizeof(cliaddr));
     printf("%d %d\n",n,atoi(action));
-
-    recv_file(sockfd, (struct sockaddr *) &cliaddr, sizeof(cliaddr), work_path);
-
+    int n_action = atoi(action);
+    while(n_action != END ){
+        recv_file(sockfd, (struct sockaddr *) &cliaddr, sizeof(cliaddr), work_path);
+    }
+    printf("Servidor cerrado\n");
     return 0;
 }

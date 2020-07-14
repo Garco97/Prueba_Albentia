@@ -1,17 +1,16 @@
-#include <string.h>
-#include <arpa/inet.h>
-#include <sys/socket.h>
-#include <fcntl.h>
+#include "cliente.h"
 
-
+char *list_flag = "100";
+char *get_flag = "101"; 
+char *send_flag = "110"; 
+char *end_flag = "111";
 /*Protocolo:
     - 00: Final
     - 01: Listado
     - 10: Solicitar fichero
     - 11: Subir fichero
 */
-#define SERV_PORT 49312
-#define MAXLINE 1024
+
 
 char *END_FLAG = "================END";
 
@@ -31,7 +30,7 @@ int main(int argc, char **argv)
 
     path = argv[3];
     target = argv[4];
-    sendto(sockfd, "0000", strlen("0000"), 0, (struct sockaddr *) &servaddr, sizeof(servaddr));
+    sendto(sockfd, end_flag, strlen(end_flag), 0, (struct sockaddr *) &servaddr, sizeof(servaddr));
     sendto(sockfd, target, strlen(target), 0, (struct sockaddr *) &servaddr, sizeof(servaddr));
     n = recvfrom(sockfd, buf, MAXLINE, 0, NULL, NULL);
     if (!strncmp(buf, "ok", 2)) {
