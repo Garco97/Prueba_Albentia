@@ -6,6 +6,8 @@
 #include <unistd.h>
 #include <stdio.h>
 #include <limits.h>
+#include <stdlib.h>
+
 #include "common.h"
 
 void recv_file(int sockfd, struct sockaddr *cliaddr, socklen_t clilen, char* work_path);
