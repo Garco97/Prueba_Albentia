@@ -25,6 +25,7 @@ void send_file(int sockfd, struct sockaddr_in servaddr, char *path){
     strcpy(full_path,path);
     strcat(full_path, "/");
     strcat(full_path, file_name);
+    printf("Enviando el fichero %s\n", file_name);
     sendto(sockfd, file_name, strlen(file_name), 0, (struct sockaddr *) &servaddr, sizeof(servaddr));
     fd = open(file_name, O_RDONLY);
     while ((n = read(fd, buf, MAXLINE)) > 0) {
@@ -32,25 +33,28 @@ void send_file(int sockfd, struct sockaddr_in servaddr, char *path){
     }
     close(fd);
     sendto(sockfd, FINISH_FLAG, strlen(FINISH_FLAG), 0, (struct sockaddr *) &servaddr, sizeof(servaddr));
+    printf("El fichero %s ha sido enviado\n", file_name);
+
 }
 
 void get_file(int sockfd, struct sockaddr_in servaddr, char *path){
     int n, fd;
-     n = sendto(sockfd, get_flag, strlen(send_flag), 0, (struct sockaddr *) &servaddr, sizeof(servaddr));
-    socklen_t len;
+    socklen_t len = sizeof(servaddr);
     char buf[MAXLINE];
     char file_name[MAXLINE];
     char full_path[4096];
+    n = sendto(sockfd, get_flag, strlen(send_flag), 0, (struct sockaddr *) &servaddr, len);
     printf("Elige fichero que descargar: ");
     strcpy(full_path, path);
     scanf("%s",file_name);
     strcat(full_path,file_name);
-    sendto(sockfd, file_name, strlen(file_name), 0, (struct sockaddr *) &servaddr, sizeof(servaddr));
+    sendto(sockfd, file_name, strlen(file_name), 0, (struct sockaddr *) &servaddr, len);
     fd = open(full_path, O_RDWR | O_CREAT, 0666);
+    printf("Solicitado el fichero %s\n", file_name);
     while (n = recvfrom(sockfd, buf, MAXLINE, 0, NULL,NULL)) {
         buf[n] = 0;
         if (!(strcmp(buf, FINISH_FLAG))) {
-            printf("Se ha recibido el fichero %s\n", full_path);
+            printf("Se ha recibido el fichero %s\n\n", full_path);
             break;
         }
         write(fd, buf, n);
@@ -61,10 +65,11 @@ void get_file(int sockfd, struct sockaddr_in servaddr, char *path){
 void list_files(int sockfd, struct sockaddr_in servaddr, char *path){
     int n;
     char buf[MAXLINE];
-    n = sendto(sockfd, list_flag, strlen(list_flag), 0, (struct sockaddr *) &servaddr, sizeof(servaddr));
-    n = sendto(sockfd, "check", strlen("check"), 0, (struct sockaddr *) &servaddr, sizeof(servaddr));
+    socklen_t len = sizeof(servaddr);
+    n = sendto(sockfd, list_flag, strlen(list_flag), 0, (struct sockaddr *) &servaddr, len);
+    n = sendto(sockfd, "check", strlen("check"), 0, (struct sockaddr *) &servaddr, len);
     n = recvfrom(sockfd, buf, MAXLINE, 0, NULL, NULL);
-    printf("%s\n", buf);
+    printf("\n%s\n", buf);
 }
 
 void show_help(){
@@ -92,7 +97,7 @@ int main(int argc, char **argv)
     sockfd = socket(AF_INET, SOCK_DGRAM, 0);
     char input[10] = "";
     while(strcmp(input, "exit") != 0){
-        printf("Escoge la acción que quieres realizar: ");  
+        printf("\nEscoge la acción que quieres realizar ('help' para ver los comandos): \n");  
         scanf("%s",input);
         if(strcmp(input, "send") == 0){
             send_file(sockfd, servaddr, cwd);
@@ -105,6 +110,7 @@ int main(int argc, char **argv)
             show_help();
         }
     }
-    sendto(sockfd, end_flag, strlen(end_flag), 0, (struct sockaddr *) &servaddr, sizeof(servaddr));
+    // Permite cerrar el servidor desde el cliente
+    //sendto(sockfd, end_flag, strlen(end_flag), 0, (struct sockaddr *) &servaddr, sizeof(servaddr));
     return 0;
 }

@@ -46,20 +46,22 @@ void get_file(int sockfd, struct sockaddr *cliaddr, socklen_t clilen, char* work
     }
     close(fd);
     sendto(sockfd, FINISH_FLAG, strlen(FINISH_FLAG), 0, cliaddr,clilen);
-    printf("Se ha enviado el nombre del fichero %s \n", file_name);
+    printf("Se ha enviado el fichero %s \n", file_name);
 
 }
 
 void list_files(int sockfd, struct sockaddr *cliaddr, socklen_t clilen, char* work_path){
     int link[2];
     char info[4096];
-    char aux[4096];
-    strcpy(aux,"ls -laShp " );
-    strcat(aux, work_path);
-    strcat(aux, " | grep -v / | awk '{print $9, $5}'");
+    char comm[4096];
+    char aux[10];
     pid_t pid;
     int n;
-    n = recvfrom(sockfd, info, MAXLINE, 0, cliaddr, &clilen);
+    int status;
+    strcpy(comm,"ls -laShp " );
+    strcat(comm, work_path);
+    strcat(comm, " | grep -v / | grep -v total | awk '{print $9, $5}'");
+    n = recvfrom(sockfd, aux, MAXLINE, 0, cliaddr, &clilen);
 
     if (pipe(link)==-1){
         die("pipe");
@@ -71,12 +73,12 @@ void list_files(int sockfd, struct sockaddr *cliaddr, socklen_t clilen, char* wo
         dup2 (link[1], STDOUT_FILENO);
         close(link[0]);
         close(link[1]);
-        char * const ptr[]={"/bin/sh","-c",aux ,NULL}; 
+        char * const ptr[]={"/bin/sh","-c",comm ,NULL}; 
         execv("/bin/sh",ptr); 
     }else{
         close(link[1]);
         int nbytes = read(link[0], info, sizeof(info));
-        waitpid(pid, NULL,NULL);
+        waitpid(pid, &status,0);
         n = sendto(sockfd, info, sizeof(info), 0,cliaddr, clilen);
     }
 }
@@ -100,13 +102,14 @@ int main(int argc, char **argv)
     strcat(work_path, "/");
     strcat(work_path, directory);
     sockfd = socket(AF_INET, SOCK_DGRAM, 0);
-    bzero(&servaddr, sizeof(servaddr));
+    socklen_t len = sizeof(servaddr);
+    bzero(&servaddr, len);
     servaddr.sin_family = AF_INET;
     servaddr.sin_addr.s_addr = htonl(INADDR_ANY);
     servaddr.sin_port = htons(port);
-    bind(sockfd, (struct sockaddr *) &servaddr, sizeof(servaddr));
+    bind(sockfd, (struct sockaddr *) &servaddr, len);
     char action[MAXLINE];
-    n = recvfrom(sockfd, action, MAXLINE, 0, &cliaddr, sizeof(cliaddr));
+    n = recvfrom(sockfd, action, MAXLINE, 0, (struct sockaddr *)&cliaddr, (socklen_t *)sizeof(cliaddr));
     int n_action = atoi(action);
     while(n_action != END ){
         if(n_action == SEND){
@@ -118,7 +121,7 @@ int main(int argc, char **argv)
             list_files(sockfd, (struct sockaddr *) &cliaddr, sizeof(cliaddr), work_path);
 
         }
-        n = recvfrom(sockfd, action, MAXLINE, 0, &cliaddr, sizeof(cliaddr));
+        n = recvfrom(sockfd, action, MAXLINE, 0, (struct sockaddr *)&cliaddr, (socklen_t *)sizeof(cliaddr));
         n_action = atoi(action);
 
     }
