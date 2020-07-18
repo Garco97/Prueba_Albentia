@@ -10,7 +10,9 @@ char *FINISH_FLAG = "================END";
 void send_file(int sockfd, struct sockaddr_in servaddr, char *path){
     int n, fd;
     char buf[MAXLINE];
-    sendto(sockfd, send_flag, strlen(send_flag), 0, (struct sockaddr *) &servaddr, sizeof(servaddr));
+    char file_name[4096];
+    char full_path[4096];
+    n = sendto(sockfd, send_flag, strlen(send_flag), 0, (struct sockaddr *) &servaddr, sizeof(servaddr));
     printf("Contenido del directorio: \n"); 
     pid_t pid = fork();
     if(!pid){
@@ -19,49 +21,89 @@ void send_file(int sockfd, struct sockaddr_in servaddr, char *path){
     }
     wait(NULL);
     printf("Selecciona fichero a enviar: ");
-    scanf("%s",path);
-    printf("Se envia el path del fichero\n");
-    sendto(sockfd, path, strlen(path), 0, (struct sockaddr *) &servaddr, sizeof(servaddr));
-    printf("Se ha enviado el path\n");
-    fd = open(path, O_RDONLY);
+    scanf("%s",file_name);
+    strcpy(full_path,path);
+    strcat(full_path, "/");
+    strcat(full_path, file_name);
+    sendto(sockfd, file_name, strlen(file_name), 0, (struct sockaddr *) &servaddr, sizeof(servaddr));
+    fd = open(file_name, O_RDONLY);
     while ((n = read(fd, buf, MAXLINE)) > 0) {
         sendto(sockfd, buf, n, 0, (struct sockaddr *) &servaddr, sizeof(servaddr));
     }
+    close(fd);
     sendto(sockfd, FINISH_FLAG, strlen(FINISH_FLAG), 0, (struct sockaddr *) &servaddr, sizeof(servaddr));
 }
+
 void get_file(int sockfd, struct sockaddr_in servaddr, char *path){
-    sendto(sockfd, get_flag, strlen(send_flag), 0, (struct sockaddr *) &servaddr, sizeof(servaddr));
-
+    int n, fd;
+     n = sendto(sockfd, get_flag, strlen(send_flag), 0, (struct sockaddr *) &servaddr, sizeof(servaddr));
+    socklen_t len;
+    char buf[MAXLINE];
+    char file_name[MAXLINE];
+    char full_path[4096];
+    printf("Elige fichero que descargar: ");
+    strcpy(full_path, path);
+    scanf("%s",file_name);
+    strcat(full_path,file_name);
+    sendto(sockfd, file_name, strlen(file_name), 0, (struct sockaddr *) &servaddr, sizeof(servaddr));
+    fd = open(full_path, O_RDWR | O_CREAT, 0666);
+    while (n = recvfrom(sockfd, buf, MAXLINE, 0, NULL,NULL)) {
+        buf[n] = 0;
+        if (!(strcmp(buf, FINISH_FLAG))) {
+            printf("Se ha recibido el fichero %s\n", full_path);
+            break;
+        }
+        write(fd, buf, n);
+    }
+    close(fd);
 }
-void list_files(int sockfd, struct sockaddr_in servaddr, char *path){
-        sendto(sockfd, list_flag, strlen(list_flag), 0, (struct sockaddr *) &servaddr, sizeof(servaddr));
 
+void list_files(int sockfd, struct sockaddr_in servaddr, char *path){
+    int n;
+    char buf[MAXLINE];
+    n = sendto(sockfd, list_flag, strlen(list_flag), 0, (struct sockaddr *) &servaddr, sizeof(servaddr));
+    n = sendto(sockfd, "check", strlen("check"), 0, (struct sockaddr *) &servaddr, sizeof(servaddr));
+    n = recvfrom(sockfd, buf, MAXLINE, 0, NULL, NULL);
+    printf("%s\n", buf);
+}
+
+void show_help(){
+    printf("\n'help' para ver ayuda\n");
+    printf("'send' para enviar ficheros al servidor\n");
+    printf("'get' para descargar ficheros del servidor\n");
+    printf("'list' para ver los ficheros disponibles en el servidor\n");
+    printf("'exit' para cerrar el cliente \n\n");
 }
 
 int main(int argc, char **argv)
 {
-    printf("%s %s %s\n", argv[1],argv[2],argv[3]);
+    char cwd[PATH_MAX];
+    if (getcwd(cwd, sizeof(cwd)) == NULL) {
+        printf("ERROR\n");
+        exit(0);
+    }
+    strcat(cwd, "/");
     int sockfd;
     struct sockaddr_in servaddr;
-    char path[400];
     bzero(&servaddr, sizeof(servaddr));
     servaddr.sin_family = AF_INET;
     servaddr.sin_port = htons(atoi(argv[2]));
     inet_pton(AF_INET, argv[1], &servaddr.sin_addr);
     sockfd = socket(AF_INET, SOCK_DGRAM, 0);
     char input[10] = "";
-    printf("Escoge la acción que quieres realizar: ");  
-    scanf("%s",input);
     while(strcmp(input, "exit") != 0){
-        if(strcmp(input, "send") == 0){
-            send_file(sockfd, servaddr, path);
-        }else if(strcmp(input, "get") == 0){
-            get_file(sockfd, servaddr, path);
-        }else if(strcmp(input, "list") == 0){
-            list_files(sockfd, servaddr, path);
-        }
         printf("Escoge la acción que quieres realizar: ");  
         scanf("%s",input);
+        if(strcmp(input, "send") == 0){
+            send_file(sockfd, servaddr, cwd);
+        }else if(strcmp(input, "get") == 0){
+            list_files(sockfd, servaddr, cwd);
+            get_file(sockfd, servaddr, cwd);
+        }else if(strcmp(input, "list") == 0){
+            list_files(sockfd, servaddr, cwd);
+        }else if(strcmp(input, "help") == 0){
+            show_help();
+        }
     }
     sendto(sockfd, end_flag, strlen(end_flag), 0, (struct sockaddr *) &servaddr, sizeof(servaddr));
     return 0;
