@@ -7,10 +7,10 @@ void recv_file(int sockfd, struct sockaddr *cliaddr, socklen_t clilen, char* wor
     int n, fd;
     socklen_t len;
     char buf[MAXLINE];
-    char *file_name =  malloc(4096 * sizeof(char));
+    char *file_name =  malloc(1024 * sizeof(char));
+    char *full_path = malloc(1024 * sizeof(char));
     len = clilen;
     n = recvfrom(sockfd, file_name, MAXLINE, 0, cliaddr, &len);
-    char full_path[4096];
     strcpy(full_path,work_path);
     strcat(full_path, "/");
     strcat(full_path, file_name);
@@ -37,17 +37,16 @@ void recv_file(int sockfd, struct sockaddr *cliaddr, socklen_t clilen, char* wor
 
 void get_file(int sockfd, struct sockaddr *cliaddr, socklen_t clilen, char* work_path){
     int n, fd;
+    int j;
+    int count = 0;
     char buf[MAXLINE];
-    char *file_name =  malloc(4096 * sizeof(char));
-    char full_path[4096];
+    char *file_name =  malloc(1024 * sizeof(char));
+    char *full_path =  malloc(1024 * sizeof(char));
     n = recvfrom(sockfd, file_name, MAXLINE, 0, cliaddr, &clilen);
-    strcpy(full_path,work_path);
+    strcpy(full_path, work_path);
     strcat(full_path, "/");
     strcat(full_path, file_name);
     fd = open(full_path, O_RDONLY);
-    int j;
-    int count = 0;
-
     while ((n = read(fd, buf, MAXLINE)) > 0) {
         char *ack = (char*) malloc(MAXLINE * sizeof(char));
         j = sendto(sockfd, buf, n, 0, cliaddr,clilen);
@@ -67,8 +66,8 @@ void get_file(int sockfd, struct sockaddr *cliaddr, socklen_t clilen, char* work
 
 void list_files(int sockfd, struct sockaddr *cliaddr, socklen_t clilen, char* work_path){
     int link[2];
-    char info[4096];
-    char comm[4096];
+    char info[1024];
+    char comm[1024];
     char aux[10];
     pid_t pid;
     int n;
@@ -100,8 +99,7 @@ void list_files(int sockfd, struct sockaddr *cliaddr, socklen_t clilen, char* wo
 }
 
          
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv){
     char cwd[PATH_MAX];
     if (getcwd(cwd, sizeof(cwd)) == NULL) {
         printf("ERROR\n");
