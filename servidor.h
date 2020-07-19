@@ -1,4 +1,3 @@
-
 #include "common.h"
 
 #define die(e) do { fprintf(stderr, "%s\n", e); exit(EXIT_FAILURE); } while (0);

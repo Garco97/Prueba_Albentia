@@ -25,15 +25,26 @@ void send_file(int sockfd, struct sockaddr_in servaddr, char *path){
     strcpy(full_path,path);
     strcat(full_path, "/");
     strcat(full_path, file_name);
-    printf("Enviando el fichero %s\n", file_name);
+    printf("\nEnviando el fichero %s\n", file_name);
     sendto(sockfd, file_name, strlen(file_name), 0, (struct sockaddr *) &servaddr, sizeof(servaddr));
     fd = open(file_name, O_RDONLY);
+    int j;
+    int count = 0;
     while ((n = read(fd, buf, MAXLINE)) > 0) {
-        sendto(sockfd, buf, n, 0, (struct sockaddr *) &servaddr, sizeof(servaddr));
+        char *ack = (char*) malloc(MAXLINE * sizeof(char));
+        j = sendto(sockfd, buf, n, 0, (struct sockaddr *) &servaddr, sizeof(servaddr));
+        n = recvfrom(sockfd, ack, MAXLINE, 0, NULL, NULL);
+        if(atoi(ack) != count){
+            printf("%d %d %s\n", count, atoi(ack), ack);
+            printf("Error enviando paquete  %d %d %d\n",n,j,count);
+            break;
+        }
+        count ++;
     }
+    count = 0;
     close(fd);
     sendto(sockfd, FINISH_FLAG, strlen(FINISH_FLAG), 0, (struct sockaddr *) &servaddr, sizeof(servaddr));
-    printf("El fichero %s ha sido enviado\n", file_name);
+    printf("\nEl fichero %s ha sido enviado\n", file_name);
 
 }
 
@@ -43,7 +54,7 @@ void get_file(int sockfd, struct sockaddr_in servaddr, char *path){
     char buf[MAXLINE];
     char file_name[MAXLINE];
     char full_path[4096];
-    n = sendto(sockfd, get_flag, strlen(send_flag), 0, (struct sockaddr *) &servaddr, len);
+    n = sendto(sockfd, get_flag, strlen(get_flag), 0, (struct sockaddr *) &servaddr, len);
     printf("Elige fichero que descargar: ");
     strcpy(full_path, path);
     scanf("%s",file_name);
@@ -51,13 +62,18 @@ void get_file(int sockfd, struct sockaddr_in servaddr, char *path){
     sendto(sockfd, file_name, strlen(file_name), 0, (struct sockaddr *) &servaddr, len);
     fd = open(full_path, O_RDWR | O_CREAT, 0666);
     printf("Solicitado el fichero %s\n", file_name);
+    int count = 0;
     while (n = recvfrom(sockfd, buf, MAXLINE, 0, NULL,NULL)) {
+        char ack[13];
         buf[n] = 0;
         if (!(strcmp(buf, FINISH_FLAG))) {
             printf("Se ha recibido el fichero %s\n\n", full_path);
             break;
         }
         write(fd, buf, n);
+        sprintf(ack, "%d", count);        
+        n = sendto(sockfd, ack, strlen(ack), 0, (struct sockaddr *) &servaddr, len);
+        count++;
     }
     close(fd);
 }
@@ -83,19 +99,19 @@ void show_help(){
 int main(int argc, char **argv)
 {
     char cwd[PATH_MAX];
+    char input[10] = "";
+    int sockfd;
     if (getcwd(cwd, sizeof(cwd)) == NULL) {
         printf("ERROR\n");
         exit(0);
     }
     strcat(cwd, "/");
-    int sockfd;
     struct sockaddr_in servaddr;
     bzero(&servaddr, sizeof(servaddr));
     servaddr.sin_family = AF_INET;
     servaddr.sin_port = htons(atoi(argv[2]));
     inet_pton(AF_INET, argv[1], &servaddr.sin_addr);
     sockfd = socket(AF_INET, SOCK_DGRAM, 0);
-    char input[10] = "";
     while(strcmp(input, "exit") != 0){
         printf("\nEscoge la acción que quieres realizar ('help' para ver los comandos): \n");  
         scanf("%s",input);

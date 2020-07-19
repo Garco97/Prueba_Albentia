@@ -1,4 +1,3 @@
-
 #include "common.h"
 
 void send_file(int sockfd, struct sockaddr_in servaddr, char *path);

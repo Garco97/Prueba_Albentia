@@ -19,14 +19,20 @@ void recv_file(int sockfd, struct sockaddr *cliaddr, socklen_t clilen, char* wor
     if(!fd){
         printf("Error al abrir el fichero\n");
     }
+    int count = 0;
     while ((n = recvfrom(sockfd, buf, MAXLINE, 0, cliaddr, &len))) {
+        char ack[13];
         buf[n] = 0;
         if (!(strcmp(buf, FINISH_FLAG))) {
             printf("El fichero se recibe en %s\n", full_path);
             break;
         }
         write(fd, buf, n);
+        sprintf(ack, "%d", count);                
+        n = sendto(sockfd, ack, strlen(ack), 0, cliaddr, len);
+        count++;
     }
+    count = 0;
     close(fd);
 }
 
@@ -40,9 +46,19 @@ void get_file(int sockfd, struct sockaddr *cliaddr, socklen_t clilen, char* work
     strcat(full_path, "/");
     strcat(full_path, file_name);
     fd = open(full_path, O_RDONLY);
-    int j ;
+    int j;
+    int count = 0;
+
     while ((n = read(fd, buf, MAXLINE)) > 0) {
+        char *ack = (char*) malloc(MAXLINE * sizeof(char));
         j = sendto(sockfd, buf, n, 0, cliaddr,clilen);
+        n = recvfrom(sockfd, ack, MAXLINE, 0, cliaddr, &clilen);
+        if(atoi(ack) != count){
+            printf("%d %d\n", count, atoi(ack));
+            printf("Error enviando paquete  %d %d %d\n",n,j,count);
+            break;
+        }
+        count++;
     }
     close(fd);
     sendto(sockfd, FINISH_FLAG, strlen(FINISH_FLAG), 0, cliaddr,clilen);
@@ -66,7 +82,7 @@ void list_files(int sockfd, struct sockaddr *cliaddr, socklen_t clilen, char* wo
     if (pipe(link)==-1){
         die("pipe");
     }
-    if ((pid = fork()) == -1){
+    if ((pid =fork()) == -1){
         die("fork");
     }
     if(!pid){
@@ -116,14 +132,11 @@ int main(int argc, char **argv)
             recv_file(sockfd, (struct sockaddr *) &cliaddr, sizeof(cliaddr), work_path);
         }else if(n_action == GET){
             get_file(sockfd, (struct sockaddr *) &cliaddr, sizeof(cliaddr), work_path);
-
         }else if(n_action == LIST){
             list_files(sockfd, (struct sockaddr *) &cliaddr, sizeof(cliaddr), work_path);
-
         }
         n = recvfrom(sockfd, action, MAXLINE, 0, (struct sockaddr *)&cliaddr, (socklen_t *)sizeof(cliaddr));
         n_action = atoi(action);
-
     }
     return 0;
 }
