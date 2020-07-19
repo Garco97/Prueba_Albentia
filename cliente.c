@@ -10,7 +10,7 @@ char *FINISH_FLAG = "================END";
 void send_file(int sockfd, struct sockaddr_in servaddr, char *path){
     int n, fd;
     char buf[MAXLINE];
-    char file_name[4096];
+    char *file_name =  malloc(4096 * sizeof(char));
     char full_path[4096];
     n = sendto(sockfd, send_flag, strlen(send_flag), 0, (struct sockaddr *) &servaddr, sizeof(servaddr));
     printf("Contenido del directorio: \n"); 
@@ -31,7 +31,7 @@ void send_file(int sockfd, struct sockaddr_in servaddr, char *path){
     int j;
     int count = 0;
     while ((n = read(fd, buf, MAXLINE)) > 0) {
-        char *ack = (char*) malloc(MAXLINE * sizeof(char));
+        char *ack =  malloc(MAXLINE * sizeof(char));
         j = sendto(sockfd, buf, n, 0, (struct sockaddr *) &servaddr, sizeof(servaddr));
         n = recvfrom(sockfd, ack, MAXLINE, 0, NULL, NULL);
         if(atoi(ack) != count){
@@ -45,14 +45,14 @@ void send_file(int sockfd, struct sockaddr_in servaddr, char *path){
     close(fd);
     sendto(sockfd, FINISH_FLAG, strlen(FINISH_FLAG), 0, (struct sockaddr *) &servaddr, sizeof(servaddr));
     printf("\nEl fichero %s ha sido enviado\n", file_name);
-
+    
 }
 
 void get_file(int sockfd, struct sockaddr_in servaddr, char *path){
     int n, fd;
     socklen_t len = sizeof(servaddr);
     char buf[MAXLINE];
-    char file_name[MAXLINE];
+    char *file_name =  malloc(4096 * sizeof(char));
     char full_path[4096];
     n = sendto(sockfd, get_flag, strlen(get_flag), 0, (struct sockaddr *) &servaddr, len);
     printf("Elige fichero que descargar: ");
@@ -75,7 +75,7 @@ void get_file(int sockfd, struct sockaddr_in servaddr, char *path){
         n = sendto(sockfd, ack, strlen(ack), 0, (struct sockaddr *) &servaddr, len);
         count++;
     }
-    close(fd);
+    close(fd); 
 }
 
 void list_files(int sockfd, struct sockaddr_in servaddr, char *path){

@@ -7,10 +7,9 @@ void recv_file(int sockfd, struct sockaddr *cliaddr, socklen_t clilen, char* wor
     int n, fd;
     socklen_t len;
     char buf[MAXLINE];
-    char file_name[MAXLINE];
+    char *file_name =  malloc(4096 * sizeof(char));
     len = clilen;
     n = recvfrom(sockfd, file_name, MAXLINE, 0, cliaddr, &len);
-    file_name[n] = 0;
     char full_path[4096];
     strcpy(full_path,work_path);
     strcat(full_path, "/");
@@ -24,7 +23,7 @@ void recv_file(int sockfd, struct sockaddr *cliaddr, socklen_t clilen, char* wor
         char ack[13];
         buf[n] = 0;
         if (!(strcmp(buf, FINISH_FLAG))) {
-            printf("El fichero se recibe en %s\n", full_path);
+            printf("Se ha recibido el fichero %s\n", file_name);
             break;
         }
         write(fd, buf, n);
@@ -39,7 +38,7 @@ void recv_file(int sockfd, struct sockaddr *cliaddr, socklen_t clilen, char* wor
 void get_file(int sockfd, struct sockaddr *cliaddr, socklen_t clilen, char* work_path){
     int n, fd;
     char buf[MAXLINE];
-    char file_name[MAXLINE];
+    char *file_name =  malloc(4096 * sizeof(char));
     char full_path[4096];
     n = recvfrom(sockfd, file_name, MAXLINE, 0, cliaddr, &clilen);
     strcpy(full_path,work_path);
@@ -79,7 +78,7 @@ void list_files(int sockfd, struct sockaddr *cliaddr, socklen_t clilen, char* wo
     strcat(comm, " | grep -v / | grep -v total | awk '{print $9, $5}'");
     n = recvfrom(sockfd, aux, MAXLINE, 0, cliaddr, &clilen);
 
-    if (pipe(link)==-1){
+    if (pipe(link) == -1){
         die("pipe");
     }
     if ((pid =fork()) == -1){
@@ -97,6 +96,7 @@ void list_files(int sockfd, struct sockaddr *cliaddr, socklen_t clilen, char* wo
         waitpid(pid, &status,0);
         n = sendto(sockfd, info, sizeof(info), 0,cliaddr, clilen);
     }
+    printf("Se listan los ficheros del servidor\n");
 }
 
          
