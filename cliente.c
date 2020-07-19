@@ -30,6 +30,7 @@ void send_file(int sockfd, struct sockaddr_in servaddr, char *path){
     fd = open(file_name, O_RDONLY);
     int j;
     int count = 0;
+    int sending = 600;
     while ((n = read(fd, buf, MAXLINE)) > 0) {
         char *ack =  malloc(MAXLINE * sizeof(char));
         j = sendto(sockfd, buf, n, 0, (struct sockaddr *) &servaddr, sizeof(servaddr));
@@ -40,6 +41,12 @@ void send_file(int sockfd, struct sockaddr_in servaddr, char *path){
             break;
         }
         count ++;
+        sending --;
+        if(!sending){
+            fputc('.', stdout);
+            fflush(stdout);
+            sending = 600;
+        }
     }
     count = 0;
     close(fd);
@@ -63,17 +70,24 @@ void get_file(int sockfd, struct sockaddr_in servaddr, char *path){
     fd = open(full_path, O_RDWR | O_CREAT, 0666);
     printf("Solicitado el fichero %s\n", file_name);
     int count = 0;
+    int sending = 600;
     while (n = recvfrom(sockfd, buf, MAXLINE, 0, NULL,NULL)) {
         char ack[13];
         buf[n] = 0;
         if (!(strcmp(buf, FINISH_FLAG))) {
-            printf("Se ha recibido el fichero %s\n\n", full_path);
+            printf("\nSe ha recibido el fichero %s\n\n", full_path);
             break;
         }
         write(fd, buf, n);
         sprintf(ack, "%d", count);        
         n = sendto(sockfd, ack, strlen(ack), 0, (struct sockaddr *) &servaddr, len);
         count++;
+        sending --;
+        if(!sending){
+            fputc('.', stdout);
+            fflush(stdout);
+            sending = 600;
+        }
     }
     close(fd); 
 }
@@ -126,7 +140,6 @@ int main(int argc, char **argv)
             show_help();
         }
     }
-    // Permite cerrar el servidor desde el cliente
-    //sendto(sockfd, end_flag, strlen(end_flag), 0, (struct sockaddr *) &servaddr, sizeof(servaddr));
+    sendto(sockfd, end_flag, strlen(end_flag), 0, (struct sockaddr *) &servaddr, sizeof(servaddr));
     return 0;
 }
